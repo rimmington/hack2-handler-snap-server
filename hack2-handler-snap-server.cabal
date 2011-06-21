@@ -29,6 +29,7 @@ library
                     , air
                     , snap-core
                     , snap-server
+                    , directory
                     
   hs-source-dirs: src/
   exposed-modules:  
