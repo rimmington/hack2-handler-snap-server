@@ -34,6 +34,8 @@ import qualified Snap.Internal.Http.Types as SnapInternal
 import Data.Maybe (listToMaybe, fromMaybe)
 import Data.Map (toAscList, fromAscList)
 
+import Data.IORef (readIORef)
+import qualified Snap.Http.Server as SnapServer
 
 {-
 
@@ -53,23 +55,28 @@ import Data.Map (toAscList, fromAscList)
 -}
 
 
-requestToEnv :: Snap.Request -> Env
-requestToEnv request = def
-  {
-    requestMethod  = request.Snap.rqMethod.snapMethodToHackMethod
-  -- , scriptName     = request.SnapInternal.rqSnapletPath
-  , pathInfo       = request.Snap.rqPathInfo
-  , queryString    = request.Snap.rqQueryString -- .B.dropWhile (is '?')
-  , serverName     = request.Snap.rqServerName
-  , serverPort     = request.Snap.rqServerPort
-  , httpHeaders    = request.SnapInternal.rqHeaders.toAscList.map_snd (listToMaybe > fromMaybe B.empty) .map caseInsensitiveHeaderToHeader
-  , hackUrlScheme  = if request.Snap.rqIsSecure then HTTPS else HTTP
-  , hackHeaders    = 
-    [
-      ("RemoteHost", request.Snap.rqRemoteAddr)
-    , ("RemotePort", request.Snap.rqRemotePort.show.pack)
-    ]
-  }
+requestToEnv :: Snap.Request -> IO Env
+requestToEnv request = do
+  (Snap.SomeEnumerator some_enumerator) <- readIORef - request.SnapInternal.rqBody
+  
+  return - def
+  
+    {
+      requestMethod  = request.Snap.rqMethod.snapMethodToHackMethod
+    -- , scriptName     = request.SnapInternal.rqSnapletPath
+    , pathInfo       = request.Snap.rqPathInfo
+    , queryString    = request.Snap.rqQueryString -- .B.dropWhile (is '?')
+    , serverName     = request.Snap.rqServerName
+    , serverPort     = request.Snap.rqServerPort
+    , httpHeaders    = request.SnapInternal.rqHeaders.toAscList.map_snd (listToMaybe > fromMaybe B.empty) .map caseInsensitiveHeaderToHeader
+    , hackUrlScheme  = if request.Snap.rqIsSecure then HTTPS else HTTP
+    , hackInput      = HackEnumerator some_enumerator
+    , hackHeaders    = 
+      [
+        ("RemoteHost", request.Snap.rqRemoteAddr)
+      , ("RemotePort", request.Snap.rqRemotePort.show.pack)
+      ]
+    }
   
 
 snapMethodToHackMethod :: Snap.Method -> RequestMethod
@@ -97,61 +104,27 @@ hackResponseToSnapResponse response =
     . Snap.setResponseBody (response.body.unHackEnumerator $= EL.map fromByteString)
 
 
+
 -- ($=) :: Monad m
 --      => Enumerator ao m (Step ai m b)
 --      -> Enumeratee ao ai m b
 --      -> Enumerator ai m b
 -- ($=) = joinE
 
-{-
-hackAppToWaiApp :: Application -> Wai.Application
-hackAppToWaiApp app request = do
-   response <- io - app - requestToEnv request
-   
-   let wai_response_enumerator = hackResponseToWaiResponseEnumerator response 
-   
-   return - Wai.ResponseEnumerator wai_response_enumerator
-   
-  
-  
 
-hackResponseToWaiResponseEnumerator :: (forall a. Response -> Wai.ResponseEnumerator a)
-hackResponseToWaiResponseEnumerator response f = 
-  let s = response.status.statusToStatusHeader
-      h = response.headers.map headerToCaseInsensitiveHeader
+hackAppToSnap :: Application -> Snap.Snap ()
+hackAppToSnap app = do
+  request <- Snap.getRequest
   
-      -- wai response enumerator expect the callback (iteratee) to acts on builder.
-      -- type ResponseEnumerator a =
-      --  (H.Status -> H.ResponseHeaders -> Iteratee Builder IO a) -> IO a
+  env <- io - requestToEnv request
   
-      server_iteratee :: Iteratee Builder IO a
-      server_iteratee = f s h
+  response <- io - app env
+   
+  let snap_response = hackResponseToSnapResponse response 
+   
+  Snap.putResponse snap_response
 
-      
-      -- in Builder, fromByteString :: S.ByteString -> Builder
-      -- in Enumerator.List, map :: Monad m => (ao -> ai)
-      --  -> Enumeratee ao ai m b
-      
-      -- type Enumeratee ao ai m b = Step ai m b -> Iteratee ao m (Step ai m b)
-      -- builder_enumeratee :: Enumeratee ByteString Builder IO a
-      builder_enumeratee :: Step Builder IO a -> Iteratee ByteString IO (Step Builder IO a)
-      builder_enumeratee = EL.map fromByteString
-      
-      
-      flattened_server_iteratee :: Iteratee ByteString IO a
-      flattened_server_iteratee = joinI bytestring_to_builder_layered_iteratee
-      
-      
-      flattened_server_iteratee :: Iteratee ByteString IO a
-      flattened_server_iteratee =  builder_enumeratee =$ server_iteratee
-      
-      final_iteratee_taking_input_from_hack_enumerator :: Iteratee ByteString IO a
-      final_iteratee_taking_input_from_hack_enumerator = response.body.unHackEnumerator $$ flattened_server_iteratee
-      
-      
-  in
-  run_ final_iteratee_taking_input_from_hack_enumerator
-
+ 
 
 data ServerConfig = ServerConfig
   {
@@ -166,12 +139,20 @@ instance Default ServerConfig where
     }
 
 
-runWithConfig :: ServerConfig -> Application -> IO ()
-runWithConfig config app = Warp.runSettings
-  Warp.defaultSettings {Warp.settingsPort = config.port}
-  (hackAppToWaiApp app)
+runWithSnapServerConfig :: SnapServer.Config Snap.Snap a -> Application -> IO ()
+runWithSnapServerConfig snap_server_config app = do
+  let snap = hackAppToSnap app :: Snap.Snap ()
+  
+  SnapServer.httpServe snap_server_config snap
 
+
+runWithConfig :: ServerConfig -> Application -> IO ()
+runWithConfig config app = 
+  let snap_config = SnapServer.emptyConfig.SnapServer.setPort (config.port)
+  in
+  runWithSnapServerConfig snap_config app
+
+  
 run :: Application -> IO ()
 run = runWithConfig def
 
--}
