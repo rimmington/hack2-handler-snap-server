@@ -6,17 +6,17 @@
 module Hack2.Handler.SnapServer 
 (
 
---   run
--- , runWithConfig
--- , ServerConfig(..)
--- , hackAppToWaiApp
+  run
+, runWithConfig
+, runWithSnapServerConfig
+, ServerConfig(..)
+, hackAppToSnap
 
 ) where
 
 import Prelude ()
 import Air.Env hiding (def, Default)
 
-import qualified Network.Wai as Wai
 import Hack2
 import Data.Default (def, Default)
 import qualified Data.CaseInsensitive as CaseInsensitive
@@ -26,8 +26,6 @@ import Data.Enumerator (Enumerator, Iteratee (..), ($$), joinI, run_, Enumeratee
 import qualified Data.Enumerator.List as EL
 import Blaze.ByteString.Builder (Builder, fromByteString, fromLazyByteString)
 
-import qualified Safe as Safe
-
 import qualified Snap.Types as Snap
 import qualified Snap.Internal.Http.Types as SnapInternal
 
@@ -36,6 +34,9 @@ import Data.Map (toAscList, fromAscList)
 
 import Data.IORef (readIORef)
 import qualified Snap.Http.Server as SnapServer
+
+import System.Directory (createDirectory, doesDirectoryExist)
+import Control.Monad (when)
 
 {-
 
@@ -64,7 +65,7 @@ requestToEnv request = do
     {
       requestMethod  = request.Snap.rqMethod.snapMethodToHackMethod
     -- , scriptName     = request.SnapInternal.rqSnapletPath
-    , pathInfo       = request.Snap.rqPathInfo
+    , pathInfo       = B.append "/" - request.Snap.rqPathInfo
     , queryString    = request.Snap.rqQueryString -- .B.dropWhile (is '?')
     , serverName     = request.Snap.rqServerName
     , serverPort     = request.Snap.rqServerPort
@@ -147,9 +148,16 @@ runWithSnapServerConfig snap_server_config app = do
 
 
 runWithConfig :: ServerConfig -> Application -> IO ()
-runWithConfig config app = 
+runWithConfig config app = do
   let snap_config = SnapServer.emptyConfig.SnapServer.setPort (config.port)
-  in
+  
+      snap_default_log_path = "log"
+  
+  log_directory_exist <- doesDirectoryExist snap_default_log_path
+  when (not - log_directory_exist) -
+    createDirectory snap_default_log_path
+    
+    
   runWithSnapServerConfig snap_config app
 
   

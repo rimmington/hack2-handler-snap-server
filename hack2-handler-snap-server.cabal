@@ -1,5 +1,5 @@
 Name:                 hack2-handler-snap-server
-Version:              2011.6.20.1
+Version:              2011.6.21
 Build-type:           Simple
 Synopsis:             Hack2 Snap server handler
 Description:          Hack2 Snap server handler
@@ -27,9 +27,10 @@ library
                     , blaze-builder < 0.4
                     , case-insensitive < 0.3
                     , air
-                    , safe
+                    , snap-core
+                    , snap-server
                     
   hs-source-dirs: src/
   exposed-modules:  
-                    Hack2.Handler.Warp
+                    Hack2.Handler.SnapServer
                     

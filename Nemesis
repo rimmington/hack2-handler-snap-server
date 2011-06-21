@@ -32,7 +32,7 @@ nemesis = do
 
   desc "test ab"
   task "ab" $ do
-    sh "runghc test/ab.hs"
+    sh "runghc -isrc test/ab.hs"
 
   
   desc "show sloc"

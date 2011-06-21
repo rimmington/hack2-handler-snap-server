@@ -9,6 +9,7 @@ import Data.Default (def)
 import Data.ByteString.Lazy.Char8 (pack)
 
 import Air.Env hiding (def)
+import Air.Extra
 import Prelude ()
 import Control.Monad (forever)
 
@@ -22,8 +23,10 @@ app = simple_access_logger Nothing - \env ->
 
 main = do
   fork - do
-    putStrLn - "warp started at port 3001"
+    putStrLn - "snap server started at port 3001"
     SnapServer.runWithConfig def {SnapServer.port = 3001} app
+  
+  sleep 1
   
   fork - do
     putStrLn - "happstack started at port 3000"
