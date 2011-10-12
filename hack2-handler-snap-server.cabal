@@ -1,5 +1,5 @@
 Name:                 hack2-handler-snap-server
-Version:              2011.6.21
+Version:              2011.10.12
 Build-type:           Simple
 Synopsis:             Hack2 Snap server handler
 Description:          Hack2 Snap server handler
@@ -16,16 +16,16 @@ data-files:           readme.md, changelog.md, Nemesis
 library
 
   build-depends: 
-                      base >= 4.0 && < 5
+                      base >= 4.0 && < 100
                     , network
                     , bytestring
                     , data-default >= 0.2
                     , hack2 >= 2011.6.20
                     , containers
                     , mtl
-                    , enumerator < 5
-                    , blaze-builder < 0.4
-                    , case-insensitive < 0.3
+                    , enumerator
+                    , blaze-builder
+                    , case-insensitive
                     , air
                     , snap-core
                     , snap-server
