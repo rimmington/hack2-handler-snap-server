@@ -1,5 +1,5 @@
 Name:                 hack2-handler-snap-server
-Version:              2011.10.12
+Version:              2011.10.30
 Build-type:           Simple
 Synopsis:             Hack2 Snap server handler
 Description:          Hack2 Snap server handler
@@ -28,7 +28,7 @@ library
                     , case-insensitive
                     , air
                     , snap-core
-                    , snap-server
+                    , snap-server > 0.6
                     , directory
                     
   hs-source-dirs: src/

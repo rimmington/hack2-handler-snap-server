@@ -26,7 +26,8 @@ import Data.Enumerator (Enumerator, Iteratee (..), ($$), joinI, run_, Enumeratee
 import qualified Data.Enumerator.List as EL
 import Blaze.ByteString.Builder (Builder, fromByteString, fromLazyByteString)
 
-import qualified Snap.Types as Snap
+import qualified Snap.Core as Snap
+import Snap.Types.Headers as Snap.Headers
 import qualified Snap.Internal.Http.Types as SnapInternal
 
 import Data.Maybe (listToMaybe, fromMaybe)
@@ -69,7 +70,7 @@ requestToEnv request = do
     , queryString    = request.Snap.rqQueryString -- .B.dropWhile (is '?')
     , serverName     = request.Snap.rqServerName
     , serverPort     = request.Snap.rqServerPort
-    , httpHeaders    = request.SnapInternal.rqHeaders.toAscList.map_snd (listToMaybe > fromMaybe B.empty) .map caseInsensitiveHeaderToHeader
+    , httpHeaders    = request.SnapInternal.rqHeaders.Snap.Headers.toList.map caseInsensitiveHeaderToHeader
     , hackUrlScheme  = if request.Snap.rqIsSecure then HTTPS else HTTP
     , hackInput      = HackEnumerator some_enumerator
     , hackHeaders    = 
@@ -101,7 +102,7 @@ hackResponseToSnapResponse :: Response -> Snap.Response
 hackResponseToSnapResponse response = 
   Snap.emptyResponse
     . Snap.setResponseCode (response.status)
-    . (\r -> r { SnapInternal.rspHeaders = response.headers.map headerToCaseInsensitiveHeader. map_snd return .fromAscList })
+    . (\r -> r { SnapInternal.rspHeaders = response.headers.map headerToCaseInsensitiveHeader.Snap.Headers.fromList })
     . Snap.setResponseBody (response.body.unHackEnumerator $= EL.map fromByteString)
 
 
