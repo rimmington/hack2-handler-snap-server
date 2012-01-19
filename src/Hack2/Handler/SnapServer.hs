@@ -44,7 +44,6 @@ import Control.Monad (when)
 
 import qualified Data.ByteString.Lazy.Char8 as Lazy
 import qualified Data.Map as M
-import Hack2.Contrib.AirBackports
 
 import qualified Data.ByteString.Char8 as Strict
 
