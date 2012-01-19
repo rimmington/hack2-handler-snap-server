@@ -39,27 +39,31 @@ import qualified Snap.Http.Server as SnapServer
 import System.Directory (createDirectory, doesDirectoryExist)
 import Control.Monad (when)
 
-{-
 
-{  requestMethod  :: RequestMethod
-,  scriptName     :: ByteString
-,  pathInfo       :: ByteString
-,  queryString    :: ByteString
-,  serverName     :: ByteString
-,  serverPort     :: Int
-,  httpHeaders    :: [(ByteString, ByteString)]
-,  hackVersion    :: (Int, Int, Int)
-,  hackUrlScheme  :: HackUrlScheme
-,  hackInput      :: HackEnumerator
-,  hackErrors     :: HackErrors
-,  hackHeaders    :: [(ByteString, ByteString)]
+-- backports from earlier hack2 utils
 
--}
+import qualified Data.ByteString.Lazy.Char8 as Lazy
+import qualified Data.Map as M
+import Hack2.Contrib.AirBackports
 
+import qualified Data.ByteString.Char8 as Strict
+
+import qualified Data.Enumerator.Binary as EB
+import qualified Data.Enumerator.List as EL
+
+import Data.Enumerator (run_, enumList, Enumerator, ($$))
+
+fromEnumerator :: Monad m => Enumerator Strict.ByteString m Lazy.ByteString -> m Lazy.ByteString
+fromEnumerator m = run_ - m $$ EB.consume
+
+toEnumerator :: Monad m => Lazy.ByteString -> Enumerator Strict.ByteString m a
+toEnumerator = enumList 1 < Lazy.toChunks
 
 requestToEnv :: Snap.Request -> IO Env
 requestToEnv request = do
   (Snap.SomeEnumerator some_enumerator) <- readIORef - request.SnapInternal.rqBody
+  
+  _requestBody <- fromEnumerator some_enumerator
   
   return - def
   
@@ -72,7 +76,7 @@ requestToEnv request = do
     , serverPort     = request.Snap.rqServerPort
     , httpHeaders    = request.SnapInternal.rqHeaders.Snap.Headers.toList.map caseInsensitiveHeaderToHeader
     , hackUrlScheme  = if request.Snap.rqIsSecure then HTTPS else HTTP
-    , hackInput      = HackEnumerator some_enumerator
+    , hackInput      = _requestBody.l2s
     , hackHeaders    = 
       [
         ("RemoteHost", request.Snap.rqRemoteAddr)
@@ -103,7 +107,7 @@ hackResponseToSnapResponse response =
   Snap.emptyResponse
     . Snap.setResponseCode (response.status)
     . (\r -> r { SnapInternal.rspHeaders = response.headers.map headerToCaseInsensitiveHeader.Snap.Headers.fromList })
-    . Snap.setResponseBody (response.body.unHackEnumerator $= EL.map fromByteString)
+    . Snap.setResponseBody (response.body.s2l.toEnumerator $= EL.map fromByteString)
 
 
 

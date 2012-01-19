@@ -1,5 +1,5 @@
 Name:                 hack2-handler-snap-server
-Version:              2011.10.30
+Version:              2012.1.19
 Build-type:           Simple
 Synopsis:             Hack2 Snap server handler
 Description:          Hack2 Snap server handler
@@ -20,7 +20,7 @@ library
                     , network
                     , bytestring
                     , data-default >= 0.2
-                    , hack2 >= 2011.6.20
+                    , hack2 >= 2012.1.19
                     , containers
                     , mtl
                     , enumerator
