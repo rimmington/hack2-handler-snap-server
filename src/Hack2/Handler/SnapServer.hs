@@ -58,12 +58,8 @@ fromEnumerator m = run_ - m $$ EB.consume
 toEnumerator :: Monad m => Lazy.ByteString -> Enumerator Strict.ByteString m a
 toEnumerator = enumList 1 < Lazy.toChunks
 
-requestToEnv :: Snap.Request -> IO Env
-requestToEnv request = do
-  (Snap.SomeEnumerator some_enumerator) <- readIORef - request.SnapInternal.rqBody
-  
-  _requestBody <- fromEnumerator some_enumerator
-  
+requestToEnv :: Snap.Request -> Lazy.ByteString -> IO Env
+requestToEnv request body = do
   return - def
   
     {
@@ -75,7 +71,7 @@ requestToEnv request = do
     , serverPort     = request.Snap.rqServerPort
     , httpHeaders    = request.SnapInternal.rqHeaders.Snap.Headers.toList.map caseInsensitiveHeaderToHeader
     , hackUrlScheme  = if request.Snap.rqIsSecure then HTTPS else HTTP
-    , hackInput      = _requestBody.l2s
+    , hackInput      = body.l2s
     , hackHeaders    = 
       [
         ("RemoteHost", request.Snap.rqRemoteAddr)
@@ -121,7 +117,9 @@ hackAppToSnap :: Application -> Snap.Snap ()
 hackAppToSnap app = do
   request <- Snap.getRequest
   
-  env <- io - requestToEnv request
+  body <- Snap.getRequestBody
+
+  env <- io - requestToEnv request body
   
   response <- io - app env
    
